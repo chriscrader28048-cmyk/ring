@@ -1,2 +1,1 @@
 pygame==2.5.2
-schedule==1.2.0
