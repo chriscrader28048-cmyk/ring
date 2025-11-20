@@ -3,7 +3,7 @@ Module quản lý lịch trình phát âm thanh
 """
 import json
 import os
-from datetime import datetime
+from datetime import datetime, time
 from typing import List, Dict, Optional
 import threading
 import time as time_module
@@ -13,8 +13,7 @@ class AudioSchedule:
     """Lớp đại diện cho một lịch phát âm thanh"""
 
     def __init__(self, schedule_id: str, name: str, audio_file: str,
-                 schedule_time: str, enabled: bool = True, repeat_daily: bool = False,
-                 days_of_week: List[int] = None):
+                 schedule_time: str, enabled: bool = True, repeat_daily: bool = False):
         """
         Khởi tạo lịch phát
 
@@ -25,7 +24,6 @@ class AudioSchedule:
             schedule_time: Thời gian phát (định dạng HH:MM)
             enabled: Có kích hoạt hay không
             repeat_daily: Có lặp lại hàng ngày không
-            days_of_week: Danh sách các ngày trong tuần (0=T2, 1=T3, ..., 6=CN)
         """
         self.schedule_id = schedule_id
         self.name = name
@@ -33,8 +31,6 @@ class AudioSchedule:
         self.schedule_time = schedule_time
         self.enabled = enabled
         self.repeat_daily = repeat_daily
-        # Mặc định tất cả các ngày nếu không chỉ định
-        self.days_of_week = days_of_week if days_of_week is not None else [0, 1, 2, 3, 4, 5, 6]
 
     def to_dict(self) -> Dict:
         """Chuyển đổi sang dictionary"""
@@ -44,8 +40,7 @@ class AudioSchedule:
             'audio_file': self.audio_file,
             'schedule_time': self.schedule_time,
             'enabled': self.enabled,
-            'repeat_daily': self.repeat_daily,
-            'days_of_week': self.days_of_week
+            'repeat_daily': self.repeat_daily
         }
 
     @staticmethod
@@ -57,16 +52,8 @@ class AudioSchedule:
             audio_file=data['audio_file'],
             schedule_time=data['schedule_time'],
             enabled=data.get('enabled', True),
-            repeat_daily=data.get('repeat_daily', False),
-            days_of_week=data.get('days_of_week', [0, 1, 2, 3, 4, 5, 6])
+            repeat_daily=data.get('repeat_daily', False)
         )
-
-    def get_days_display(self) -> str:
-        """Lấy chuỗi hiển thị các ngày"""
-        day_names = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
-        if len(self.days_of_week) == 7:
-            return 'Hàng ngày'
-        return ', '.join([day_names[d] for d in sorted(self.days_of_week)])
 
 
 class ScheduleManager:
@@ -113,8 +100,7 @@ class ScheduleManager:
             print(f"Lỗi khi lưu lịch trình: {e}")
 
     def add_schedule(self, name: str, audio_file: str, schedule_time: str,
-                     enabled: bool = True, repeat_daily: bool = False,
-                     days_of_week: List[int] = None) -> AudioSchedule:
+                     enabled: bool = True, repeat_daily: bool = False) -> AudioSchedule:
         """
         Thêm lịch mới
 
@@ -124,14 +110,12 @@ class ScheduleManager:
             schedule_time: Thời gian (HH:MM)
             enabled: Kích hoạt
             repeat_daily: Lặp hàng ngày
-            days_of_week: Các ngày trong tuần
 
         Returns:
             AudioSchedule đã tạo
         """
         schedule_id = f"schedule_{len(self.schedules) + 1}_{int(time_module.time())}"
-        schedule = AudioSchedule(schedule_id, name, audio_file, schedule_time,
-                                 enabled, repeat_daily, days_of_week)
+        schedule = AudioSchedule(schedule_id, name, audio_file, schedule_time, enabled, repeat_daily)
         self.schedules.append(schedule)
         self.save_schedules()
         print(f"Đã thêm lịch: {name} - {schedule_time}")
@@ -196,17 +180,13 @@ class ScheduleManager:
         while self.running:
             now = datetime.now()
             current_time = now.strftime("%H:%M")
-            # Chuyển đổi weekday: Python dùng 0=Monday, ta dùng 0=T2
-            current_day = now.weekday()  # 0=Monday=T2
 
             # Chỉ kiểm tra mỗi phút một lần
             if current_time != last_minute:
                 last_minute = current_time
 
                 for schedule in self.schedules:
-                    if (schedule.enabled and
-                        schedule.schedule_time == current_time and
-                        current_day in schedule.days_of_week):
+                    if schedule.enabled and schedule.schedule_time == current_time:
                         print(f"\n⏰ Đến giờ phát: {schedule.name} ({current_time})")
                         if self.callback:
                             self.callback(schedule.audio_file, schedule.name)
