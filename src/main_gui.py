@@ -29,6 +29,9 @@ class AudioSchedulerGUI:
         self.root.geometry("1000x700")
         self.root.minsize(900, 600)
 
+        # Maximize cửa sổ khi khởi động
+        self.root.state('zoomed')
+
         # Cấu hình style
         self.setup_style()
 
@@ -60,7 +63,8 @@ class AudioSchedulerGUI:
         # Cấu hình màu sắc
         style.configure('Title.TLabel', font=('Segoe UI', 14, 'bold'))
         style.configure('Header.TLabel', font=('Segoe UI', 11, 'bold'))
-        style.configure('Clock.TLabel', font=('Segoe UI', 24, 'bold'), foreground='#2196F3')
+        style.configure('Clock.TLabel', font=('Segoe UI', 28, 'bold'), foreground='#2196F3')
+        style.configure('Date.TLabel', font=('Segoe UI', 12), foreground='#333')
         style.configure('Status.TLabel', font=('Segoe UI', 9), foreground='#666')
 
         # Nút chính
@@ -81,7 +85,7 @@ class AudioSchedulerGUI:
         main_frame.columnconfigure(0, weight=1)
         main_frame.rowconfigure(3, weight=1)
 
-        # === HEADER VỚI ĐỒNG HỒ ===
+        # === HEADER VỚI ĐỒNG HỒ VÀ NGÀY THÁNG ===
         header_frame = ttk.Frame(main_frame)
         header_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 15))
         header_frame.columnconfigure(1, weight=1)
@@ -89,8 +93,15 @@ class AudioSchedulerGUI:
         ttk.Label(header_frame, text="Quản Lý Phát Âm Thanh Theo Lịch",
                   style='Title.TLabel').grid(row=0, column=0, sticky=tk.W)
 
-        self.clock_label = ttk.Label(header_frame, text="00:00:00", style='Clock.TLabel')
-        self.clock_label.grid(row=0, column=2, sticky=tk.E)
+        # Khung thời gian và ngày tháng
+        datetime_frame = ttk.LabelFrame(header_frame, text="", padding="10")
+        datetime_frame.grid(row=0, column=2, sticky=tk.E)
+
+        self.clock_label = ttk.Label(datetime_frame, text="00:00:00", style='Clock.TLabel')
+        self.clock_label.pack()
+
+        self.date_label = ttk.Label(datetime_frame, text="", style='Date.TLabel')
+        self.date_label.pack()
 
         # === PHẦN PHÁT THỦ CÔNG ===
         manual_frame = ttk.LabelFrame(main_frame, text="  Phát Thủ Công  ", padding="15")
@@ -240,10 +251,17 @@ class AudioSchedulerGUI:
         self.status_label.pack(side=tk.LEFT)
 
     def update_clock(self):
-        """Cập nhật đồng hồ"""
+        """Cập nhật đồng hồ và ngày tháng"""
         now = datetime.now()
         time_str = now.strftime("%H:%M:%S")
         self.clock_label.config(text=time_str)
+
+        # Tên các ngày và tháng bằng tiếng Việt
+        day_names = ['Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy', 'Chủ Nhật']
+        day_name = day_names[now.weekday()]
+        date_str = f"{day_name}, {now.day:02d}/{now.month:02d}/{now.year}"
+        self.date_label.config(text=date_str)
+
         self.root.after(1000, self.update_clock)
 
     def select_all_days(self):
