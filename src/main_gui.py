@@ -413,6 +413,8 @@ class AudioSchedulerGUI:
         ttk.Button(list_btn_frame, text="🔄 Làm mới",
                   command=self.refresh_schedule_list,
                   style='Control.TButton').pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Button(list_btn_frame, text="✏️ Sửa", command=self.edit_schedule,
+                  style='Control.TButton').pack(side=tk.LEFT, padx=5)
         ttk.Button(list_btn_frame, text="🗑️ Xóa", command=self.delete_schedule,
                   style='Danger.TButton').pack(side=tk.LEFT, padx=5)
         ttk.Button(list_btn_frame, text="⏯️ Bật/Tắt", command=self.toggle_schedule,
@@ -634,6 +636,154 @@ class AudioSchedulerGUI:
             self.scheduler.remove_schedule(schedule_id)
             self.refresh_schedule_list()
             messagebox.showinfo("Thành công", "Đã xóa lịch!")
+
+    def edit_schedule(self):
+        """Sửa lịch đã chọn"""
+        selection = self.schedule_tree.selection()
+        if not selection:
+            messagebox.showwarning("Cảnh báo", "Vui lòng chọn lịch cần sửa!")
+            return
+
+        schedule_id = selection[0]
+
+        # Tìm schedule
+        schedule = None
+        for s in self.scheduler.get_schedules():
+            if s.schedule_id == schedule_id:
+                schedule = s
+                break
+
+        if not schedule:
+            return
+
+        # Tạo popup chỉnh sửa
+        edit_window = tk.Toplevel(self.root)
+        edit_window.title("Sửa Lịch Trình")
+        edit_window.geometry("500x450")
+        edit_window.resizable(False, False)
+        edit_window.configure(bg=ModernStyle.BG_CARD)
+        edit_window.transient(self.root)
+        edit_window.grab_set()
+
+        # Center window
+        edit_window.update_idletasks()
+        x = (edit_window.winfo_screenwidth() - 500) // 2
+        y = (edit_window.winfo_screenheight() - 450) // 2
+        edit_window.geometry(f"+{x}+{y}")
+
+        # Header
+        header = tk.Frame(edit_window, bg=ModernStyle.PRIMARY, height=50)
+        header.pack(fill=tk.X)
+        header.pack_propagate(False)
+        tk.Label(header, text="✏️ Sửa Lịch Trình", font=('Segoe UI', 12, 'bold'),
+                bg=ModernStyle.PRIMARY, fg=ModernStyle.TEXT_WHITE).pack(pady=12)
+
+        # Content
+        content = ttk.Frame(edit_window, padding=20)
+        content.pack(fill=tk.BOTH, expand=True)
+
+        # Tên lịch
+        ttk.Label(content, text="Tên lịch:", font=('Segoe UI', 10, 'bold')).pack(anchor=tk.W)
+        name_entry = ttk.Entry(content, font=('Segoe UI', 10))
+        name_entry.insert(0, schedule.name)
+        name_entry.pack(fill=tk.X, pady=(5, 15))
+
+        # File âm thanh
+        ttk.Label(content, text="File âm thanh:", font=('Segoe UI', 10, 'bold')).pack(anchor=tk.W)
+        file_frame = ttk.Frame(content)
+        file_frame.pack(fill=tk.X, pady=(5, 15))
+        file_entry = ttk.Entry(file_frame, font=('Segoe UI', 10))
+        file_entry.insert(0, schedule.audio_file)
+        file_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 10))
+
+        def browse_edit_file():
+            filename = filedialog.askopenfilename(
+                title="Chọn file âm thanh",
+                filetypes=[("Audio files", "*.mp3 *.wav *.ogg *.flac *.mid *.midi"), ("All files", "*.*")]
+            )
+            if filename:
+                file_entry.delete(0, tk.END)
+                file_entry.insert(0, filename)
+
+        ttk.Button(file_frame, text="Chọn", command=browse_edit_file).pack(side=tk.RIGHT)
+
+        # Thời gian
+        ttk.Label(content, text="Thời gian:", font=('Segoe UI', 10, 'bold')).pack(anchor=tk.W)
+        time_frame = ttk.Frame(content)
+        time_frame.pack(anchor=tk.W, pady=(5, 15))
+
+        hour, minute = schedule.schedule_time.split(':')
+        hour_spin = ttk.Spinbox(time_frame, from_=0, to=23, width=4, format="%02.0f", font=('Segoe UI', 12))
+        hour_spin.set(hour)
+        hour_spin.pack(side=tk.LEFT)
+        tk.Label(time_frame, text=" : ", font=('Segoe UI', 12, 'bold'), bg=ModernStyle.BG_CARD).pack(side=tk.LEFT)
+        minute_spin = ttk.Spinbox(time_frame, from_=0, to=59, width=4, format="%02.0f", font=('Segoe UI', 12))
+        minute_spin.set(minute)
+        minute_spin.pack(side=tk.LEFT)
+
+        # Thời lượng
+        ttk.Label(content, text="Thời lượng phát:", font=('Segoe UI', 10, 'bold')).pack(anchor=tk.W)
+        duration_frame = ttk.Frame(content)
+        duration_frame.pack(anchor=tk.W, pady=(5, 15))
+
+        edit_duration_var = tk.StringVar(value=str(schedule.duration))
+        for dur in [("10 giây", "10"), ("15 giây", "15"), ("20 giây", "20")]:
+            ttk.Radiobutton(duration_frame, text=dur[0], value=dur[1],
+                           variable=edit_duration_var).pack(side=tk.LEFT, padx=(0, 15))
+
+        # Các ngày
+        ttk.Label(content, text="Các ngày phát:", font=('Segoe UI', 10, 'bold')).pack(anchor=tk.W)
+        days_frame = ttk.Frame(content)
+        days_frame.pack(anchor=tk.W, pady=(5, 15))
+
+        day_names = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
+        edit_day_vars = []
+        for i, day in enumerate(day_names):
+            var = tk.BooleanVar(value=(i in schedule.days_of_week))
+            edit_day_vars.append(var)
+            ttk.Checkbutton(days_frame, text=day, variable=var).pack(side=tk.LEFT, padx=(0, 8))
+
+        # Buttons
+        btn_frame = ttk.Frame(content)
+        btn_frame.pack(fill=tk.X, pady=(10, 0))
+
+        def save_changes():
+            new_name = name_entry.get().strip()
+            new_file = file_entry.get().strip()
+            new_hour = hour_spin.get()
+            new_minute = minute_spin.get()
+            new_duration = int(edit_duration_var.get())
+            new_days = [i for i, var in enumerate(edit_day_vars) if var.get()]
+
+            if not new_name or not new_file:
+                messagebox.showwarning("Cảnh báo", "Vui lòng nhập đầy đủ thông tin!")
+                return
+
+            if not new_days:
+                messagebox.showwarning("Cảnh báo", "Vui lòng chọn ít nhất một ngày!")
+                return
+
+            new_time = f"{int(new_hour):02d}:{int(new_minute):02d}"
+
+            # Cập nhật schedule
+            self.scheduler.update_schedule(
+                schedule_id,
+                name=new_name,
+                audio_file=new_file,
+                schedule_time=new_time,
+                duration=new_duration,
+                days_of_week=new_days
+            )
+
+            self.refresh_schedule_list()
+            self.status_label.config(text=f"● Đã cập nhật lịch: {new_name}", fg=ModernStyle.SUCCESS)
+            edit_window.destroy()
+            messagebox.showinfo("Thành công", "Đã cập nhật lịch!")
+
+        ttk.Button(btn_frame, text="💾 Lưu", command=save_changes,
+                  style='Success.TButton').pack(side=tk.LEFT, padx=(0, 10))
+        ttk.Button(btn_frame, text="❌ Hủy", command=edit_window.destroy,
+                  style='Control.TButton').pack(side=tk.LEFT)
 
     def toggle_schedule(self):
         selection = self.schedule_tree.selection()
