@@ -263,13 +263,13 @@ class AudioSchedulerGUI:
         volume_frame.pack(side=tk.RIGHT)
 
         ttk.Label(volume_frame, text="🔊", style='Card.TLabel').pack(side=tk.LEFT, padx=(0, 5))
+        self.volume_label = ttk.Label(volume_frame, text="100%",
+                                     style='Card.TLabel', width=5)
         self.volume_scale = ttk.Scale(volume_frame, from_=0, to=100,
                                      orient=tk.HORIZONTAL,
                                      command=self.on_volume_change, length=120)
         self.volume_scale.set(100)
         self.volume_scale.pack(side=tk.LEFT)
-        self.volume_label = ttk.Label(volume_frame, text="100%",
-                                     style='Card.TLabel', width=5)
         self.volume_label.pack(side=tk.LEFT, padx=(5, 0))
 
         # Card: Thêm Lịch Mới
