@@ -5,6 +5,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import os
 import sys
+import subprocess
 from datetime import datetime
 
 # Thêm thư mục src vào path
@@ -46,7 +47,7 @@ class AudioSchedulerGUI:
 
     def __init__(self, root):
         self.root = root
-        self.root.title("Quản Lý Phát Âm Thanh Theo Lịch")
+        self.root.title("Hệ thống hẹn giờ phát âm thanh của LG Chem")
         self.root.geometry("1100x750")
         self.root.minsize(1000, 700)
 
@@ -199,14 +200,25 @@ class AudioSchedulerGUI:
         header_frame.pack_propagate(False)
 
         header_content = tk.Frame(header_frame, bg=ModernStyle.BG_HEADER)
-        header_content.pack(fill=tk.BOTH, expand=True, padx=20, pady=15)
+        header_content.pack(fill=tk.BOTH, expand=True, padx=20, pady=10)
 
-        title_label = tk.Label(header_content,
-                              text="QUẢN LÝ PHÁT ÂM THANH THEO LỊCH",
-                              font=('Segoe UI', 16, 'bold'),
+        # Title và subtitle
+        title_frame = tk.Frame(header_content, bg=ModernStyle.BG_HEADER)
+        title_frame.pack(side=tk.LEFT)
+
+        title_label = tk.Label(title_frame,
+                              text="HỆ THỐNG HẸN GIỜ PHÁT ÂM THANH CỦA LG CHEM",
+                              font=('Segoe UI', 14, 'bold'),
                               bg=ModernStyle.BG_HEADER,
                               fg=ModernStyle.TEXT_WHITE)
-        title_label.pack(side=tk.LEFT)
+        title_label.pack(anchor=tk.W)
+
+        subtitle_label = tk.Label(title_frame,
+                                 text="Made by Kitts",
+                                 font=('Segoe UI', 9, 'italic'),
+                                 bg=ModernStyle.BG_HEADER,
+                                 fg='#BBDEFB')
+        subtitle_label.pack(anchor=tk.W)
 
         # === MAIN CONTENT ===
         main_frame = ttk.Frame(container, style='Main.TFrame', padding=20)
@@ -407,6 +419,11 @@ class AudioSchedulerGUI:
         self.date_label = ttk.Label(clock_card, text="", style='Date.TLabel')
         self.date_label.pack(pady=(0, 10))
 
+        # Button sync time
+        ttk.Button(clock_card, text="🔄 Đồng bộ thời gian",
+                  command=self.sync_system_time,
+                  style='Control.TButton').pack(pady=(5, 0))
+
         # === STATUS BAR ===
         status_frame = tk.Frame(container, bg=ModernStyle.BG_MAIN, height=30)
         status_frame.pack(fill=tk.X, side=tk.BOTTOM)
@@ -430,6 +447,46 @@ class AudioSchedulerGUI:
         self.date_label.config(text=date_str)
 
         self.root.after(1000, self.update_clock)
+
+    def sync_system_time(self):
+        """Đồng bộ thời gian hệ thống từ Windows Time Service"""
+        try:
+            # Chạy lệnh đồng bộ thời gian Windows
+            result = subprocess.run(
+                ['w32tm', '/resync', '/nowait'],
+                capture_output=True,
+                text=True,
+                creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
+            )
+
+            if result.returncode == 0:
+                self.status_label.config(
+                    text="● Đã gửi yêu cầu đồng bộ thời gian",
+                    fg=ModernStyle.SUCCESS
+                )
+                messagebox.showinfo(
+                    "Đồng bộ thời gian",
+                    "Đã gửi yêu cầu đồng bộ thời gian với máy chủ Windows.\n\n"
+                    "Lưu ý: Cần chạy với quyền Administrator để đồng bộ thành công."
+                )
+            else:
+                # Thử cách khác nếu không có quyền admin
+                self.status_label.config(
+                    text="● Cần quyền Administrator để đồng bộ",
+                    fg=ModernStyle.WARNING
+                )
+                messagebox.showwarning(
+                    "Cần quyền Admin",
+                    "Để đồng bộ thời gian, vui lòng:\n\n"
+                    "1. Chạy ứng dụng với quyền Administrator\n"
+                    "2. Hoặc vào Settings > Time & Language > Sync now"
+                )
+        except Exception as e:
+            self.status_label.config(
+                text=f"● Lỗi đồng bộ: {str(e)}",
+                fg=ModernStyle.DANGER
+            )
+            messagebox.showerror("Lỗi", f"Không thể đồng bộ thời gian:\n{str(e)}")
 
     def select_all_days(self):
         for var in self.day_vars:
