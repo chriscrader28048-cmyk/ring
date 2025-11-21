@@ -3,6 +3,8 @@ Module quản lý phát âm thanh
 """
 import pygame
 import os
+import threading
+import time
 from typing import Optional
 
 
@@ -14,6 +16,8 @@ class AudioPlayer:
         pygame.mixer.init()
         self.current_file: Optional[str] = None
         self.is_playing = False
+        self.playback_thread: Optional[threading.Thread] = None
+        self.stop_flag = False
 
     def load_audio(self, file_path: str) -> bool:
         """
@@ -66,8 +70,66 @@ class AudioPlayer:
             print(f"Lỗi khi phát âm thanh: {e}")
             return False
 
+    def play_with_duration(self, file_path: str, duration_seconds: int) -> bool:
+        """
+        Phát âm thanh với thời lượng cố định
+        - Nếu file ngắn hơn duration: lặp lại cho đủ
+        - Nếu file dài hơn duration: chỉ phát phần đầu
+
+        Args:
+            file_path: Đường dẫn file âm thanh
+            duration_seconds: Thời lượng phát (giây)
+
+        Returns:
+            True nếu phát thành công
+        """
+        try:
+            # Dừng phát hiện tại nếu có
+            self.stop()
+            self.stop_flag = False
+
+            if not os.path.exists(file_path):
+                print(f"Lỗi: File không tồn tại: {file_path}")
+                return False
+
+            # Tải và phát trong thread riêng
+            def play_thread():
+                try:
+                    pygame.mixer.music.load(file_path)
+                    self.current_file = file_path
+
+                    # Phát với loop vô hạn
+                    pygame.mixer.music.play(loops=-1)
+                    self.is_playing = True
+                    print(f"Đang phát: {os.path.basename(file_path)} ({duration_seconds}s)")
+
+                    # Đợi đủ thời gian hoặc bị dừng
+                    start_time = time.time()
+                    while time.time() - start_time < duration_seconds:
+                        if self.stop_flag:
+                            break
+                        time.sleep(0.1)
+
+                    # Dừng phát
+                    pygame.mixer.music.stop()
+                    self.is_playing = False
+                    print(f"Đã phát xong {duration_seconds} giây")
+
+                except Exception as e:
+                    print(f"Lỗi khi phát: {e}")
+                    self.is_playing = False
+
+            self.playback_thread = threading.Thread(target=play_thread, daemon=True)
+            self.playback_thread.start()
+            return True
+
+        except Exception as e:
+            print(f"Lỗi khi phát âm thanh: {e}")
+            return False
+
     def stop(self):
         """Dừng phát âm thanh"""
+        self.stop_flag = True
         pygame.mixer.music.stop()
         self.is_playing = False
         print("Đã dừng phát")

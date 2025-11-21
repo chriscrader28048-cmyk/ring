@@ -329,6 +329,19 @@ class AudioSchedulerGUI:
         self.minute_spinbox.set("00")
         self.minute_spinbox.pack(side=tk.LEFT)
 
+        # Thời lượng phát
+        duration_frame = ttk.Frame(schedule_card, style='Card.TFrame')
+        duration_frame.pack(fill=tk.X, pady=(0, 10))
+        ttk.Label(duration_frame, text="Thời lượng phát:", style='Header.TLabel').pack(anchor=tk.W)
+
+        duration_input = ttk.Frame(duration_frame, style='Card.TFrame')
+        duration_input.pack(anchor=tk.W, pady=(5, 0))
+
+        self.duration_var = tk.StringVar(value="15")
+        for dur in [("10 giây", "10"), ("15 giây", "15"), ("20 giây", "20")]:
+            ttk.Radiobutton(duration_input, text=dur[0], value=dur[1],
+                           variable=self.duration_var).pack(side=tk.LEFT, padx=(0, 15))
+
         # Chọn ngày
         days_frame = ttk.Frame(schedule_card, style='Card.TFrame')
         days_frame.pack(fill=tk.X, pady=(0, 10))
@@ -370,16 +383,17 @@ class AudioSchedulerGUI:
         list_card.pack(fill=tk.BOTH, expand=True)
 
         # Treeview
-        columns = ('Tên', 'Thời gian', 'Các ngày', 'File', 'Trạng thái')
+        columns = ('Tên', 'Thời gian', 'TL', 'Các ngày', 'File', 'TT')
         self.schedule_tree = ttk.Treeview(list_card, columns=columns,
                                          show='headings', height=8)
 
         # Column config
-        self.schedule_tree.column('Tên', width=120, minwidth=80)
-        self.schedule_tree.column('Thời gian', width=70, minwidth=50)
-        self.schedule_tree.column('Các ngày', width=120, minwidth=80)
-        self.schedule_tree.column('File', width=150, minwidth=100)
-        self.schedule_tree.column('Trạng thái', width=70, minwidth=50)
+        self.schedule_tree.column('Tên', width=100, minwidth=70)
+        self.schedule_tree.column('Thời gian', width=60, minwidth=50)
+        self.schedule_tree.column('TL', width=40, minwidth=30)
+        self.schedule_tree.column('Các ngày', width=100, minwidth=70)
+        self.schedule_tree.column('File', width=120, minwidth=80)
+        self.schedule_tree.column('TT', width=50, minwidth=40)
 
         for col in columns:
             self.schedule_tree.heading(col, text=col)
@@ -562,6 +576,7 @@ class AudioSchedulerGUI:
         audio_file = self.schedule_file_entry.get().strip()
         hour = self.hour_spinbox.get()
         minute = self.minute_spinbox.get()
+        duration = int(self.duration_var.get())
 
         if not name or not audio_file:
             messagebox.showwarning("Cảnh báo", "Vui lòng nhập đầy đủ tên lịch và chọn file âm thanh!")
@@ -579,12 +594,12 @@ class AudioSchedulerGUI:
 
         schedule_time = f"{int(hour):02d}:{int(minute):02d}"
 
-        self.scheduler.add_schedule(name, audio_file, schedule_time, True, True, days_of_week)
+        self.scheduler.add_schedule(name, audio_file, schedule_time, True, True, days_of_week, duration)
 
         day_names = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
         days_str = ', '.join([day_names[d] for d in days_of_week])
 
-        messagebox.showinfo("Thành công", f"Đã thêm lịch: {name}\nThời gian: {schedule_time}\nCác ngày: {days_str}")
+        messagebox.showinfo("Thành công", f"Đã thêm lịch: {name}\nThời gian: {schedule_time}\nThời lượng: {duration}s\nCác ngày: {days_str}")
 
         self.schedule_name_entry.delete(0, tk.END)
         self.schedule_file_entry.delete(0, tk.END)
@@ -599,9 +614,10 @@ class AudioSchedulerGUI:
             self.schedule_tree.insert('', tk.END, iid=schedule.schedule_id, values=(
                 schedule.name,
                 schedule.schedule_time,
+                f"{schedule.duration}s",
                 schedule.get_days_display(),
                 os.path.basename(schedule.audio_file),
-                "✓ Bật" if schedule.enabled else "✗ Tắt"
+                "✓" if schedule.enabled else "✗"
             ))
 
         count = len(self.scheduler.get_schedules())
@@ -636,11 +652,11 @@ class AudioSchedulerGUI:
                                         fg=ModernStyle.SUCCESS if new_status else ModernStyle.WARNING)
                 break
 
-    def auto_play_callback(self, audio_file, schedule_name):
-        self.player.play(audio_file)
-        self.status_label.config(text=f"● Đang phát theo lịch: {schedule_name}",
+    def auto_play_callback(self, audio_file, schedule_name, duration=15):
+        self.player.play_with_duration(audio_file, duration)
+        self.status_label.config(text=f"● Đang phát theo lịch: {schedule_name} ({duration}s)",
                                 fg=ModernStyle.PRIMARY)
-        self.show_notification(f"Đang phát theo lịch: {schedule_name}")
+        self.show_notification(f"Đang phát theo lịch: {schedule_name}\nThời lượng: {duration} giây")
 
     def show_notification(self, message):
         notification = tk.Toplevel(self.root)

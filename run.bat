@@ -1,9 +1,18 @@
 @echo off
 chcp 65001 >nul
-title Quan Ly Phat Am Thanh Theo Lich
+title He Thong Hen Gio Phat Am Thanh - LG Chem
+
+:: Kiem tra quyen Admin
+net session >nul 2>&1
+if %errorLevel% neq 0 (
+    echo Dang yeu cau quyen Administrator...
+    powershell -Command "Start-Process '%~f0' -Verb RunAs"
+    exit /b
+)
 
 echo ============================================
-echo    QUAN LY PHAT AM THANH THEO LICH
+echo    HE THONG HEN GIO PHAT AM THANH
+echo    LG Chem - Made by Kitts
 echo ============================================
 echo.
 
@@ -26,7 +35,7 @@ if errorlevel 1 (
     pip install -r requirements.txt --quiet
 )
 
-echo Dang khoi dong ung dung...
+echo Dang khoi dong ung dung voi quyen Administrator...
 echo.
 
 python src\main_gui.py
